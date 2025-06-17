@@ -30,12 +30,20 @@ const injectCopilotScript = (
 ) => {
   const safeBotName = validateBotName(key);
   const scriptId = `copilot-loader-script${safeBotName === 'copilot' ? '' : `-${safeBotName}`}`;
-  if (document.getElementById(scriptId)) return;
+  const existingScript = document.getElementById(scriptId);
 
-  const inlineScript = document.createElement('script');
-  inlineScript.id = scriptId;
-  inlineScript.type = 'application/javascript';
-  inlineScript.innerHTML = `
+  if (existingScript) {
+    const copilotFn = (window as any)[safeBotName];
+    if (typeof copilotFn === 'function') {
+      copilotFn('init', config, function () {
+        (window as any)[`_${safeBotName}_ready`] = true;
+      });
+    }
+  } else {
+    const inlineScript = document.createElement('script');
+    inlineScript.id = scriptId;
+    inlineScript.type = 'application/javascript';
+    inlineScript.innerHTML = `
     (function(w,d,s,o,f,js,fjs){
       w[o]=w[o]||function(){
         (w[o].q=w[o].q||[]).push(arguments);
@@ -53,7 +61,8 @@ const injectCopilotScript = (
     });
   `;
 
-  document.body.appendChild(inlineScript);
+    document.body.appendChild(inlineScript);
+  }
 
   waitForCopilot(safeBotName).then((copilot: CopilotAPI | null) => {
     if (copilot) {
